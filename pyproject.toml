@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "minitorch"
+version = "0.1.0"
+description = "Mini Deep Learning Framework"
+dependencies = [
+    "numpy",
+    "pytest",
+]
+
+[tool.setuptools.packages.find]
+include = ["minitorch", "minitorch.*"]
+
+[tool.pyright]
+include = ["minitorch", "tests"]
+extraPaths = ["."]
