@@ -88,25 +88,61 @@ class Tensor:
         from .ops import matmul
         return matmul(self, other)
         
-    def sum(self):
-        from .ops import sum_op
-        return sum_op(self)
-        
-    def mean(self):
-        return self.sum() * (1.0 / np.prod(self.shape))
+    def sum(self, axis=None, keepdims=False):
+        from .ops import sum_op, sum_axis
+        if axis is None and not keepdims:
+            return sum_op(self)
+        return sum_axis(self, axis, keepdims)
+
+    def mean(self, axis=None, keepdims=False):
+        if axis is None:
+            return self.sum() * (1.0 / float(np.prod(self.shape)))
+        return self.sum(axis=axis, keepdims=keepdims) * (1.0 / float(self.shape[axis]))
         
     def relu(self):
         from .ops import relu
         return relu(self)
-        
+
+    def softmax(self, dim=-1):
+        from .ops import softmax_op
+        return softmax_op(self, dim)
+
+    def sigmoid(self):
+        from .ops import sigmoid
+        return sigmoid(self)
+
+    def tanh(self):
+        from .ops import tanh_op
+        return tanh_op(self)
+
+    def exp(self):
+        from .ops import exp
+        return exp(self)
+
+    def log(self):
+        from .ops import log
+        return log(self)
+
     def __pow__(self, power):
         from .ops import pow_op
         return pow_op(self, power)
-        
+
+    def __neg__(self):
+        from .ops import neg
+        return neg(self)
+
     def __sub__(self, other):
         from .ops import sub
         return sub(self, other)
-        
+
     def __rsub__(self, other):
         from .ops import sub
         return sub(other, self)
+
+    def __truediv__(self, other):
+        from .ops import div
+        return div(self, other)
+
+    def __rtruediv__(self, other):
+        from .ops import div
+        return div(other, self)

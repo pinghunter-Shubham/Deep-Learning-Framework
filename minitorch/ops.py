@@ -133,6 +133,22 @@ class Pow(Function):
         a_data, power = ctx.saved_tensors
         return grad_output * power * np.power(a_data, power - 1), None
 
+class Softmax(Function):
+    @staticmethod
+    def forward(ctx, a, dim):
+        max_a = np.max(a.data, axis=dim, keepdims=True)
+        exp_a = np.exp(a.data - max_a)
+        s = exp_a / np.sum(exp_a, axis=dim, keepdims=True)
+        ctx.save_for_backward(s, dim)
+        return Tensor(s)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        s, dim = ctx.saved_tensors
+        dot = np.sum(grad_output * s, axis=dim, keepdims=True)
+        return s * (grad_output - dot), None
+
+
 class LogSoftmax(Function):
     @staticmethod
     def forward(ctx, a, dim):
@@ -151,14 +167,113 @@ class LogSoftmax(Function):
         softmax = np.exp(log_softmax)
         return grad_output - softmax * np.sum(grad_output, axis=dim, keepdims=True), None
 
+class Neg(Function):
+    @staticmethod
+    def forward(ctx, a):
+        return Tensor(-a.data)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        return -grad_output
+
+
+class Div(Function):
+    @staticmethod
+    def forward(ctx, a, b):
+        ctx.save_for_backward(a.data, b.data)
+        return Tensor(a.data / b.data)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        a_data, b_data = ctx.saved_tensors
+        return grad_output / b_data, -grad_output * a_data / (b_data ** 2)
+
+
+class Sigmoid(Function):
+    @staticmethod
+    def forward(ctx, a):
+        sig = 1.0 / (1.0 + np.exp(-a.data))
+        ctx.save_for_backward(sig)
+        return Tensor(sig)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        sig, = ctx.saved_tensors
+        return grad_output * sig * (1.0 - sig)
+
+
+class Tanh(Function):
+    @staticmethod
+    def forward(ctx, a):
+        t = np.tanh(a.data)
+        ctx.save_for_backward(t)
+        return Tensor(t)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        t, = ctx.saved_tensors
+        return grad_output * (1.0 - t ** 2)
+
+
+class Exp(Function):
+    @staticmethod
+    def forward(ctx, a):
+        e = np.exp(a.data)
+        ctx.save_for_backward(e)
+        return Tensor(e)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        e, = ctx.saved_tensors
+        return grad_output * e
+
+
+class Log(Function):
+    @staticmethod
+    def forward(ctx, a):
+        ctx.save_for_backward(a.data)
+        return Tensor(np.log(a.data))
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        a_data, = ctx.saved_tensors
+        return grad_output / a_data
+
+
+class SumAxis(Function):
+    @staticmethod
+    def forward(ctx, a, axis, keepdims):
+        ctx.save_for_backward(a.shape, axis, keepdims)
+        return Tensor(a.data.sum(axis=axis, keepdims=keepdims))
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        a_shape, axis, keepdims = ctx.saved_tensors
+        grad = grad_output
+        if not keepdims:
+            if axis is None:
+                pass  # scalar grad broadcasts to any shape
+            else:
+                grad = np.expand_dims(grad, axis=axis)
+        return np.broadcast_to(grad, a_shape).copy(), None, None
+
+
 # Public API wrappers mapping to Function nodes
 def add(a, b): return Add.apply(_coerce(a), _coerce(b))
 def mul(a, b): return Mul.apply(_coerce(a), _coerce(b))
 def sub(a, b): return Sub.apply(_coerce(a), _coerce(b))
 def matmul(a, b): return MatMul.apply(_coerce(a), _coerce(b))
+def neg(a): return Neg.apply(_coerce(a))
+def div(a, b): return Div.apply(_coerce(a), _coerce(b))
+def sigmoid(a): return Sigmoid.apply(_coerce(a))
+def tanh_op(a): return Tanh.apply(_coerce(a))
+def exp(a): return Exp.apply(_coerce(a))
+def log(a): return Log.apply(_coerce(a))
 def sum_op(a): return Sum.apply(_coerce(a))
+def sum_axis(a, axis, keepdims=False): return SumAxis.apply(_coerce(a), axis, keepdims)
 def reshape(a, new_shape): return Reshape.apply(a, new_shape)
 def transpose(a, dim0=0, dim1=1): return Transpose.apply(a, dim0, dim1)
 def relu(a): return ReLU.apply(_coerce(a))
 def pow_op(a, power): return Pow.apply(_coerce(a), power)
+def softmax_op(a, dim=-1): return Softmax.apply(_coerce(a), dim)
 def log_softmax(a, dim=-1): return LogSoftmax.apply(_coerce(a), dim)

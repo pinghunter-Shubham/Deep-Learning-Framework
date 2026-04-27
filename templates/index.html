@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MiniTorch — Deep Learning Framework</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root { --indigo:#4f46e5; --violet:#7c3aed; --emerald:#10b981; --rose:#ef4444; --amber:#f59e0b; --sky:#0891b2; }
+body { background:#f1f5f9; font-family:'Segoe UI',system-ui,sans-serif; }
+
+.navbar { background:linear-gradient(135deg,var(--indigo),var(--violet)); }
+
+.card { border:none; border-radius:14px; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+
+.arch-wrap { display:flex; align-items:center; gap:4px; overflow-x:auto; padding:8px 2px; flex-wrap:nowrap; }
+.arch-node { display:flex; flex-direction:column; align-items:center; flex-shrink:0; }
+.arch-box  { padding:5px 10px; border-radius:8px; font-size:11px; font-weight:700; color:#fff; white-space:nowrap; text-align:center; }
+.arch-dim  { font-size:9px; color:#94a3b8; margin-top:2px; }
+.arch-arr  { color:#cbd5e1; font-size:20px; line-height:1; flex-shrink:0; }
+.c-input   { background:#64748b; }
+.c-linear  { background:var(--indigo); }
+.c-conv    { background:var(--violet); }
+.c-pool    { background:var(--sky); }
+.c-relu    { background:var(--emerald); }
+.c-dropout { background:var(--amber); }
+.c-flatten { background:#8b5cf6; }
+.c-output  { background:var(--rose); }
+.c-bn      { background:#d97706; }
+
+.stat { background:#fff; border-radius:12px; padding:14px 16px; text-align:center; }
+.stat-val { font-size:22px; font-weight:800; line-height:1.1; }
+.stat-lbl { font-size:10px; color:#94a3b8; text-transform:uppercase; letter-spacing:.6px; margin-top:2px; }
+
+.progress { height:7px; border-radius:6px; background:#e2e8f0; }
+.progress-bar { border-radius:6px; transition:width .3s ease; }
+
+.log { height:90px; overflow-y:auto; background:#0f172a; color:#94a3b8; font-family:monospace; font-size:11px; border-radius:10px; padding:8px 12px; }
+.log p { margin:1px 0; }
+.log .info    { color:#60a5fa; }
+.log .success { color:#34d399; }
+.log .warn    { color:#fbbf24; }
+.log .err     { color:#f87171; }
+
+.pred-item { text-align:center; }
+.pred-wrap { position:relative; display:inline-block; }
+.pred-canvas { width:60px; height:60px; image-rendering:pixelated; border-radius:8px; display:block; }
+.pred-badge { position:absolute; bottom:-6px; right:-6px; width:22px; height:22px; border-radius:50%; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; border:2px solid #fff; }
+.pred-ok  { background:var(--emerald); color:#fff; }
+.pred-bad { background:var(--rose);    color:#fff; }
+.pred-lbl { font-size:11px; margin-top:10px; color:#475569; }
+
+.comp-card { border-left:4px solid var(--indigo); }
+.comp-icon { font-size:26px; }
+.code-block { background:#0f172a; color:#e2e8f0; font-family:monospace; font-size:11px; border-radius:8px; padding:10px 12px; overflow-x:auto; white-space:pre; margin:0; }
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+.pulsing { animation:pulse 1.4s infinite; }
+
+.sec-title { font-weight:800; font-size:1.05rem; color:#1e293b; }
+
+/* Upload zone */
+.upload-zone {
+  border:2px dashed #cbd5e1; border-radius:12px; padding:22px 12px;
+  text-align:center; cursor:pointer; transition:all .2s; background:#f8fafc;
+}
+.upload-zone:hover, .upload-zone.dragover {
+  border-color:var(--indigo); background:#eef2ff;
+}
+.upload-icon { font-size:28px; }
+
+/* Data info badges */
+.data-badge {
+  display:inline-block; background:#f1f5f9; border-radius:8px;
+  padding:5px 10px; margin:3px; font-size:12px; border:1px solid #e2e8f0;
+}
+.data-badge .val { font-weight:700; color:var(--indigo); }
+
+/* Preview table */
+.preview-table { font-size:11px; }
+.preview-table th { background:#f8fafc; font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:#64748b; }
+.preview-table td { color:#334155; }
+
+/* Predict form result bars */
+.prob-row { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+.prob-label { width:90px; font-size:11px; text-align:right; color:#64748b; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.prob-bar-wrap { flex-grow:1; background:#e2e8f0; border-radius:6px; height:18px; overflow:hidden; }
+.prob-bar-fill { height:100%; border-radius:6px; font-size:10px; color:#fff; display:flex; align-items:center; padding-left:6px; transition:width .4s ease; }
+</style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar py-3 mb-4">
+  <div class="container d-flex justify-content-between align-items-center">
+    <span class="text-white fw-bold fs-5">🧠 MiniTorch</span>
+    <span class="text-white opacity-75 small d-none d-md-block">
+      Deep Learning Framework — Built from Scratch with NumPy
+    </span>
+    <a href="https://github.com/pinghunter-Shubham/Deep-Learning-Framework"
+       target="_blank" class="btn btn-sm btn-light btn-outline-light text-white border-white opacity-75">
+      GitHub ↗
+    </a>
+  </div>
+</nav>
+
+<div class="container pb-5">
+
+<!-- Row 1: Config + Monitor -->
+<div class="row g-3 mb-3">
+
+  <!-- Config panel -->
+  <div class="col-lg-3">
+    <div class="card p-3 h-100">
+      <p class="sec-title mb-3">⚙️ Configuration</p>
+
+      <!-- Data source toggle -->
+      <label class="form-label small fw-semibold mb-1">Data Source</label>
+      <div class="btn-group w-100 mb-3">
+        <input type="radio" class="btn-check" name="datasrc" id="r-mnist" value="mnist" checked>
+        <label class="btn btn-outline-info btn-sm" for="r-mnist">📊 MNIST</label>
+        <input type="radio" class="btn-check" name="datasrc" id="r-custom" value="custom">
+        <label class="btn btn-outline-info btn-sm" for="r-custom">📂 My CSV</label>
+      </div>
+
+      <!-- Architecture (hidden for custom data) -->
+      <div id="arch-selector">
+        <label class="form-label small fw-semibold mb-1">Architecture</label>
+        <div class="btn-group w-100 mb-3">
+          <input type="radio" class="btn-check" name="model" id="r-mlp" value="mlp" checked>
+          <label class="btn btn-outline-primary btn-sm" for="r-mlp">MLP</label>
+          <input type="radio" class="btn-check" name="model" id="r-cnn" value="cnn">
+          <label class="btn btn-outline-primary btn-sm" for="r-cnn">CNN</label>
+        </div>
+      </div>
+
+      <label class="form-label small fw-semibold mb-1">Optimizer</label>
+      <div class="btn-group w-100 mb-3">
+        <input type="radio" class="btn-check" name="optimizer" id="r-adam" value="adam" checked>
+        <label class="btn btn-outline-secondary btn-sm" for="r-adam">Adam</label>
+        <input type="radio" class="btn-check" name="optimizer" id="r-sgd" value="sgd">
+        <label class="btn btn-outline-secondary btn-sm" for="r-sgd">SGD + Mom</label>
+      </div>
+
+      <label class="form-label small fw-semibold mb-1">
+        Learning Rate: <span id="lr-display" class="text-primary fw-bold">0.0010</span>
+      </label>
+      <input type="range" class="form-range mb-3" id="lr-slider"
+             min="-4" max="-1" step="0.5" value="-3"
+             oninput="lrChange(this.value)">
+
+      <label class="form-label small fw-semibold mb-1">Epochs</label>
+      <select class="form-select form-select-sm mb-3" id="sel-epochs">
+        <option value="1">1 epoch</option>
+        <option value="2">2 epochs</option>
+        <option value="3" selected>3 epochs</option>
+        <option value="5">5 epochs</option>
+      </select>
+
+      <label class="form-label small fw-semibold mb-1">Batch Size</label>
+      <select class="form-select form-select-sm mb-4" id="sel-batch">
+        <option value="64">64</option>
+        <option value="128" selected>128</option>
+        <option value="256">256</option>
+      </select>
+
+      <button class="btn btn-primary w-100 mb-2 fw-semibold" id="btn-train"
+              onclick="startTraining()">▶ Start Training</button>
+      <button class="btn btn-outline-danger w-100" id="btn-stop"
+              onclick="stopTraining()" disabled>■ Stop</button>
+    </div>
+  </div>
+
+  <!-- Monitor -->
+  <div class="col-lg-9">
+
+    <div class="card p-3 mb-3">
+      <p class="sec-title mb-2">🏗️ Architecture</p>
+      <div class="arch-wrap" id="arch-diagram"></div>
+    </div>
+
+    <div class="row g-2 mb-3">
+      <div class="col-3"><div class="stat">
+        <div class="stat-val text-primary" id="s-loss">—</div>
+        <div class="stat-lbl">Batch Loss</div>
+      </div></div>
+      <div class="col-3"><div class="stat">
+        <div class="stat-val" style="color:var(--emerald)" id="s-tacc">—</div>
+        <div class="stat-lbl">Train Acc</div>
+      </div></div>
+      <div class="col-3"><div class="stat">
+        <div class="stat-val" style="color:var(--sky)" id="s-vacc">—</div>
+        <div class="stat-lbl">Test Acc</div>
+      </div></div>
+      <div class="col-3"><div class="stat">
+        <div class="stat-val text-secondary" id="s-epoch">—</div>
+        <div class="stat-lbl">Epoch</div>
+      </div></div>
+    </div>
+
+    <div class="mb-3">
+      <div class="d-flex justify-content-between mb-1">
+        <small class="text-muted" id="prog-label">Configure and click Start Training</small>
+        <small class="text-muted" id="prog-pct">0%</small>
+      </div>
+      <div class="progress">
+        <div class="progress-bar bg-primary" id="prog-bar" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div class="card p-3 mb-3">
+      <div class="row">
+        <div class="col-md-7">
+          <p class="small fw-semibold text-muted mb-1">Training Loss</p>
+          <canvas id="loss-chart" height="130"></canvas>
+        </div>
+        <div class="col-md-5">
+          <p class="small fw-semibold text-muted mb-1">Accuracy per Epoch</p>
+          <canvas id="acc-chart" height="130"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="log" id="log">
+      <p class="info">» Ready — configure settings and click Start Training.</p>
+    </div>
+
+  </div>
+</div><!-- end row 1 -->
+
+
+<!-- CSV Upload Card (shown when My CSV is selected) -->
+<div class="card p-3 mb-3" id="upload-card" style="display:none">
+  <p class="sec-title mb-3">📂 Upload Your Dataset</p>
+  <div class="row g-3">
+
+    <!-- Drop zone + controls -->
+    <div class="col-md-5">
+      <div class="upload-zone" id="drop-zone"
+           onclick="document.getElementById('csv-file-input').click()"
+           ondragover="event.preventDefault();this.classList.add('dragover')"
+           ondragleave="this.classList.remove('dragover')"
+           ondrop="handleDrop(event)">
+        <div class="upload-icon">📄</div>
+        <div class="fw-semibold mt-1" style="font-size:13px" id="drop-zone-label">
+          Drop CSV here or click to browse
+        </div>
+        <div class="text-muted mt-1" style="font-size:11px">
+          Any tabular CSV with a label column
+        </div>
+      </div>
+      <input type="file" id="csv-file-input" accept=".csv,.txt" class="d-none"
+             onchange="handleFileSelect(this)">
+
+      <div class="mt-2 d-flex gap-2">
+        <a href="/sample_csv" class="btn btn-outline-secondary btn-sm flex-grow-1"
+           download="iris_sample.csv">
+          ⬇ Sample Iris CSV
+        </a>
+      </div>
+
+      <div class="mt-2">
+        <label class="form-label small fw-semibold mb-1">
+          Label column index
+          <span class="text-muted fw-normal">(−1 = last column)</span>
+        </label>
+        <input type="number" class="form-control form-control-sm" id="label-col-input"
+               value="-1" min="-1">
+      </div>
+
+      <button class="btn btn-primary btn-sm w-100 mt-2 fw-semibold" id="upload-btn"
+              onclick="doUpload()" disabled>
+        Analyze Dataset
+      </button>
+      <div class="mt-1 small" id="upload-status" style="color:#64748b"></div>
+    </div>
+
+    <!-- Dataset info (shown after upload) -->
+    <div class="col-md-7" id="data-info" style="display:none">
+      <p class="small fw-semibold text-muted mb-2">Dataset Summary</p>
+      <div id="data-badges" class="mb-2"></div>
+
+      <p class="small fw-semibold text-muted mb-1 mt-2">Class Distribution</p>
+      <div id="class-dist" class="mb-3"></div>
+
+      <p class="small fw-semibold text-muted mb-1">Preview (first 5 rows)</p>
+      <div class="table-responsive" style="max-height:160px; overflow-y:auto">
+        <table class="table table-sm preview-table mb-0" id="preview-table"></table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- Predictions (MNIST image gallery or custom table) -->
+<div class="card p-3 mb-4" id="pred-section" style="display:none">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <p class="sec-title mb-0">🔮 Sample Predictions — Test Set</p>
+    <span class="badge bg-success fs-6" id="final-acc-badge"></span>
+  </div>
+  <div id="pred-grid" class="d-flex flex-wrap gap-3"></div>
+</div>
+
+
+<!-- Try It Yourself (custom data only) -->
+<div class="card p-3 mb-4" id="custom-predict-card" style="display:none">
+  <p class="sec-title mb-1">🎯 Try It Yourself</p>
+  <p class="small text-muted mb-3">
+    Enter feature values below and the trained model will predict the class in real time.
+  </p>
+  <div class="row g-2 mb-3" id="predict-form-fields"></div>
+  <button class="btn btn-primary btn-sm fw-semibold px-4" onclick="runCustomPredict()">
+    ▶ Predict
+  </button>
+
+  <!-- Result panel -->
+  <div id="predict-result" class="mt-3"></div>
+</div>
+
+
+<!-- How the framework works -->
+<p class="sec-title mb-3">📚 How MiniTorch Works — Under the Hood</p>
+<div class="row g-3 mb-4">
+
+  <div class="col-md-4">
+    <div class="card p-3 comp-card h-100" style="border-color:#64748b">
+      <div class="comp-icon">💾</div>
+      <h6 class="fw-bold mt-2 mb-1">Storage</h6>
+      <p class="small text-muted mb-2">
+        The raw 1-D memory buffer. Every tensor — regardless of shape — lives in a flat
+        <code>numpy</code> array here. Reshape &amp; transpose never copy data, they only
+        change how the buffer is <em>interpreted</em>.
+      </p>
+      <pre class="code-block"># minitorch/storage.py
+self.data = np.ascontiguousarray(data).flatten()
+# All tensor data → one flat buffer</pre>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card p-3 comp-card h-100" style="border-color:var(--indigo)">
+      <div class="comp-icon">📐</div>
+      <h6 class="fw-bold mt-2 mb-1">Tensor</h6>
+      <p class="small text-muted mb-2">
+        A <em>view</em> over Storage defined by <strong>shape</strong>,
+        <strong>strides</strong>, and <strong>offset</strong>.
+        Two tensors can share the same storage — a transpose is free.
+      </p>
+      <pre class="code-block"># minitorch/tensor.py
+view = as_strided(
+  storage[offset:],
+  shape=self.shape,
+  strides=byte_strides   # per dim
+)</pre>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card p-3 comp-card h-100" style="border-color:var(--violet)">
+      <div class="comp-icon">🔄</div>
+      <h6 class="fw-bold mt-2 mb-1">Autograd</h6>
+      <p class="small text-muted mb-2">
+        Every op records itself in a <strong>computation graph</strong>
+        (<code>_creator</code>, <code>_prev</code>).
+        <code>.backward()</code> topologically sorts the graph and
+        calls each op's <code>backward()</code> in reverse.
+      </p>
+      <pre class="code-block"># minitorch/autograd.py
+for node in reversed(topo):
+    grads = node._creator.backward(
+        node._ctx, node.grad)
+    for p, g in zip(node._prev, grads):
+        p.grad += unbroadcast(g, p.shape)</pre>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card p-3 comp-card h-100" style="border-color:var(--emerald)">
+      <div class="comp-icon">⚡</div>
+      <h6 class="fw-bold mt-2 mb-1">Ops &amp; Chain Rule</h6>
+      <p class="small text-muted mb-2">
+        Each operation (Add, MatMul, ReLU, Conv2d …) is a <code>Function</code> subclass.
+        <code>forward</code> computes the result; <code>backward</code> applies the chain rule
+        to pass gradients back.
+      </p>
+      <pre class="code-block"># minitorch/ops.py — ReLU example
+class ReLU(Function):
+  def forward(ctx, a):
+    ctx.save_for_backward(a.data)
+    return Tensor(np.maximum(a.data, 0))
+  def backward(ctx, grad):
+    a, = ctx.saved_tensors
+    return grad * (a > 0)   # mask</pre>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card p-3 comp-card h-100" style="border-color:var(--amber)">
+      <div class="comp-icon">🧩</div>
+      <h6 class="fw-bold mt-2 mb-1">nn.Module</h6>
+      <p class="small text-muted mb-2">
+        Any layer subclasses <code>Module</code>.
+        <code>__setattr__</code> auto-registers <code>Parameter</code>s and
+        child modules so <code>.parameters()</code> collects every weight
+        in the network recursively.
+      </p>
+      <pre class="code-block"># minitorch/nn/module.py
+def parameters(self):
+    params = list(self._parameters.values())
+    for m in self._modules.values():
+        params.extend(m.parameters())
+    return params   # all weights, deep</pre>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card p-3 comp-card h-100" style="border-color:var(--rose)">
+      <div class="comp-icon">🎯</div>
+      <h6 class="fw-bold mt-2 mb-1">Optimizers</h6>
+      <p class="small text-muted mb-2">
+        After <code>.backward()</code> fills every <code>.grad</code>, the
+        optimizer reads them and updates weights. Adam tracks first and second
+        moment estimates for adaptive step sizes.
+      </p>
+      <pre class="code-block"># Adam update (minitorch/optim/adam.py)
+m = β1*m + (1-β1)*grad        # mean
+v = β2*v + (1-β2)*grad²       # variance
+m̂ = m / (1 - β1^t)           # bias-correct
+w -= lr * m̂ / (√v̂ + ε)      # step</pre>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- Training loop walkthrough -->
+<p class="sec-title mb-3">🔁 The Training Loop — Step by Step</p>
+<div class="card p-3 mb-4">
+  <div class="row g-0 text-center">
+    <div class="col step-col">
+      <div class="p-3">
+        <div style="font-size:28px">📦</div>
+        <div class="fw-bold small mt-1">1. Batch</div>
+        <div class="text-muted" style="font-size:11px">Slice (N, 784) or (N,1,28,28) from training data</div>
+      </div>
+    </div>
+    <div class="col-auto d-flex align-items-center text-muted">→</div>
+    <div class="col step-col">
+      <div class="p-3">
+        <div style="font-size:28px">➡️</div>
+        <div class="fw-bold small mt-1">2. Forward</div>
+        <div class="text-muted" style="font-size:11px">model(x) builds graph, returns logits (N, C)</div>
+      </div>
+    </div>
+    <div class="col-auto d-flex align-items-center text-muted">→</div>
+    <div class="col step-col">
+      <div class="p-3">
+        <div style="font-size:28px">📉</div>
+        <div class="fw-bold small mt-1">3. Loss</div>
+        <div class="text-muted" style="font-size:11px">CrossEntropyLoss compares logits to one-hot labels</div>
+      </div>
+    </div>
+    <div class="col-auto d-flex align-items-center text-muted">→</div>
+    <div class="col step-col">
+      <div class="p-3">
+        <div style="font-size:28px">🔄</div>
+        <div class="fw-bold small mt-1">4. Backward</div>
+        <div class="text-muted" style="font-size:11px">loss.backward() propagates dLoss/dW to every param</div>
+      </div>
+    </div>
+    <div class="col-auto d-flex align-items-center text-muted">→</div>
+    <div class="col step-col">
+      <div class="p-3">
+        <div style="font-size:28px">🎯</div>
+        <div class="fw-bold small mt-1">5. Step</div>
+        <div class="text-muted" style="font-size:11px">optimizer.step() subtracts lr × grad from each weight</div>
+      </div>
+    </div>
+    <div class="col-auto d-flex align-items-center text-muted">→</div>
+    <div class="col step-col">
+      <div class="p-3">
+        <div style="font-size:28px">🔃</div>
+        <div class="fw-bold small mt-1">6. Zero grad</div>
+        <div class="text-muted" style="font-size:11px">optimizer.zero_grad() clears .grad before next batch</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ── Chart setup ───────────────────────────────────────────────────────────────
+const lossChart = new Chart(document.getElementById('loss-chart'), {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [{
+      label: 'Loss', data: [], borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,.08)',
+      borderWidth: 2, pointRadius: 0, fill: true, tension: 0.35
+    }]
+  },
+  options: {
+    animation: false, responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { display: false },
+      y: { beginAtZero: true, grid: { color: '#f1f5f9' },
+           ticks: { font: { size: 10 }, maxTicksLimit: 5 } }
+    }
+  }
+});
+
+const accChart = new Chart(document.getElementById('acc-chart'), {
+  type: 'bar',
+  data: {
+    labels: [],
+    datasets: [
+      { label: 'Train', data: [], backgroundColor: 'rgba(79,70,229,.7)', borderRadius: 5 },
+      { label: 'Test',  data: [], backgroundColor: 'rgba(16,185,129,.7)', borderRadius: 5 }
+    ]
+  },
+  options: {
+    animation: false, responsive: true,
+    plugins: { legend: { position: 'top', labels: { font: { size: 10 }, boxWidth: 10 } } },
+    scales: {
+      y: { beginAtZero: true, max: 1, grid: { color: '#f1f5f9' },
+           ticks: { font: { size: 10 }, callback: v => (v*100).toFixed(0)+'%' } }
+    }
+  }
+});
+
+// ── Architecture diagrams ─────────────────────────────────────────────────────
+const ARCH = {
+  mlp: [
+    { cls:'c-input',   label:'Input',       dim:'784' },
+    { cls:'c-linear',  label:'Linear',      dim:'784→256' },
+    { cls:'c-relu',    label:'ReLU',        dim:'' },
+    { cls:'c-dropout', label:'Dropout',     dim:'p=0.2' },
+    { cls:'c-linear',  label:'Linear',      dim:'256→128' },
+    { cls:'c-relu',    label:'ReLU',        dim:'' },
+    { cls:'c-linear',  label:'Linear',      dim:'128→10' },
+    { cls:'c-output',  label:'Logits',      dim:'10 classes' },
+  ],
+  cnn: [
+    { cls:'c-input',   label:'Input',       dim:'1×28×28' },
+    { cls:'c-conv',    label:'Conv2d',      dim:'1→16, k=3' },
+    { cls:'c-relu',    label:'ReLU',        dim:'' },
+    { cls:'c-pool',    label:'MaxPool',     dim:'2×2' },
+    { cls:'c-conv',    label:'Conv2d',      dim:'16→32, k=3' },
+    { cls:'c-relu',    label:'ReLU',        dim:'' },
+    { cls:'c-pool',    label:'MaxPool',     dim:'2×2' },
+    { cls:'c-flatten', label:'Flatten',     dim:'32×7×7' },
+    { cls:'c-linear',  label:'Linear',      dim:'1568→10' },
+    { cls:'c-output',  label:'Logits',      dim:'10 classes' },
+  ]
+};
+
+function getCustomArch() {
+  if (!uploadedData) {
+    return [
+      { cls:'c-input',   label:'Input',   dim:'? features' },
+      { cls:'c-linear',  label:'Linear',  dim:'auto' },
+      { cls:'c-relu',    label:'ReLU',    dim:'' },
+      { cls:'c-linear',  label:'Linear',  dim:'auto' },
+      { cls:'c-relu',    label:'ReLU',    dim:'' },
+      { cls:'c-output',  label:'Logits',  dim:'? classes' },
+    ];
+  }
+  const nf = uploadedData.n_features;
+  const nc = uploadedData.n_classes;
+  const h1 = Math.max(64, Math.min(256, nf * 8));
+  const h2 = Math.max(32, Math.floor(h1 / 2));
+  return [
+    { cls:'c-input',   label:'Input',   dim:`${nf} features` },
+    { cls:'c-linear',  label:'Linear',  dim:`${nf}→${h1}` },
+    { cls:'c-relu',    label:'ReLU',    dim:'' },
+    { cls:'c-dropout', label:'Dropout', dim:'p=0.2' },
+    { cls:'c-linear',  label:'Linear',  dim:`${h1}→${h2}` },
+    { cls:'c-relu',    label:'ReLU',    dim:'' },
+    { cls:'c-linear',  label:'Linear',  dim:`${h2}→${nc}` },
+    { cls:'c-output',  label:'Logits',  dim:`${nc} classes` },
+  ];
+}
+
+function renderArch(model) {
+  const el = document.getElementById('arch-diagram');
+  el.innerHTML = '';
+  const nodes = model === 'custom' ? getCustomArch() : ARCH[model];
+  nodes.forEach((node, i) => {
+    if (i > 0) {
+      const arr = document.createElement('span');
+      arr.className = 'arch-arr'; arr.textContent = '→';
+      el.appendChild(arr);
+    }
+    const wrap = document.createElement('div');
+    wrap.className = 'arch-node';
+    wrap.innerHTML = `<div class="arch-box ${node.cls}">${node.label}</div>`
+                   + (node.dim ? `<div class="arch-dim">${node.dim}</div>` : '');
+    el.appendChild(wrap);
+  });
+}
+
+// ── LR slider ─────────────────────────────────────────────────────────────────
+function lrChange(val) {
+  document.getElementById('lr-display').textContent = Math.pow(10, val).toFixed(4);
+}
+
+// ── Logging ───────────────────────────────────────────────────────────────────
+function log(msg, cls='info') {
+  const el = document.getElementById('log');
+  const p  = document.createElement('p');
+  p.className = cls; p.textContent = '» ' + msg;
+  el.appendChild(p);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── Data source switching ─────────────────────────────────────────────────────
+let activeDataSrc  = 'mnist';
+let uploadedData   = null;   // response from /upload
+let uploadPendingFile = null;
+
+function switchDataSource(src) {
+  activeDataSrc = src;
+  const uploadCard  = document.getElementById('upload-card');
+  const archSel     = document.getElementById('arch-selector');
+  uploadCard.style.display = src === 'custom' ? 'block' : 'none';
+  archSel.style.display    = src === 'custom' ? 'none'  : 'block';
+  document.getElementById('custom-predict-card').style.display = 'none';
+  renderArch(src === 'custom' ? 'custom' : document.querySelector('input[name=model]:checked').value);
+}
+
+// ── CSV Upload ────────────────────────────────────────────────────────────────
+function handleDrop(event) {
+  event.preventDefault();
+  document.getElementById('drop-zone').classList.remove('dragover');
+  const file = event.dataTransfer.files[0];
+  if (file) setUploadFile(file);
+}
+
+function handleFileSelect(input) {
+  if (input.files[0]) setUploadFile(input.files[0]);
+}
+
+function setUploadFile(file) {
+  uploadPendingFile = file;
+  document.getElementById('drop-zone-label').textContent = file.name;
+  document.getElementById('upload-btn').disabled = false;
+  document.getElementById('upload-status').textContent = '';
+}
+
+function doUpload() {
+  const file = uploadPendingFile ||
+               (document.getElementById('csv-file-input').files[0] || null);
+  if (!file) {
+    document.getElementById('upload-status').textContent = 'Please select a file first.';
+    return;
+  }
+  const labelCol = parseInt(document.getElementById('label-col-input').value);
+  const form     = new FormData();
+  form.append('file', file);
+  form.append('label_col', isNaN(labelCol) ? -1 : labelCol);
+
+  document.getElementById('upload-btn').disabled   = true;
+  document.getElementById('upload-status').textContent = 'Parsing…';
+
+  fetch('/upload', { method: 'POST', body: form })
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('upload-btn').disabled = false;
+      if (!d.ok) {
+        document.getElementById('upload-status').textContent = 'Error: ' + d.error;
+        return;
+      }
+      uploadedData = d;
+      document.getElementById('upload-status').textContent = '';
+      showDataStats(d);
+      renderArch('custom');
+    })
+    .catch(err => {
+      document.getElementById('upload-btn').disabled = false;
+      document.getElementById('upload-status').textContent = 'Upload failed: ' + err;
+    });
+}
+
+function showDataStats(d) {
+  // Badges
+  const badges = document.getElementById('data-badges');
+  badges.innerHTML = `
+    <span class="data-badge">Samples: <span class="val">${d.n_samples}</span></span>
+    <span class="data-badge">Features: <span class="val">${d.n_features}</span></span>
+    <span class="data-badge">Classes: <span class="val">${d.n_classes}</span></span>
+    <span class="data-badge">Train: <span class="val">${Math.round(d.n_samples * 0.8)}</span> / Test: <span class="val">${d.n_samples - Math.round(d.n_samples * 0.8)}</span></span>
+  `;
+
+  // Class distribution
+  const dist = document.getElementById('class-dist');
+  dist.innerHTML = Object.entries(d.class_counts).map(([name, count]) => {
+    const pct = ((count / d.n_samples) * 100).toFixed(0);
+    return `
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <div style="width:80px;font-size:11px;text-align:right;color:#475569">${name}</div>
+        <div class="flex-grow-1 progress" style="height:14px">
+          <div class="progress-bar bg-primary" style="width:${pct}%;font-size:10px">${count}</div>
+        </div>
+        <div style="font-size:10px;color:#94a3b8;width:28px">${pct}%</div>
+      </div>`;
+  }).join('');
+
+  // Preview table
+  const table = document.getElementById('preview-table');
+  table.innerHTML = '';
+  const thead = table.createTHead();
+  const hr    = thead.insertRow();
+  d.preview.headers.forEach(h => {
+    const th = document.createElement('th'); th.textContent = h;
+    hr.appendChild(th);
+  });
+  const tbody = table.createTBody();
+  d.preview.rows.forEach(row => {
+    const tr = tbody.insertRow();
+    row.forEach(cell => { const td = tr.insertCell(); td.textContent = cell; });
+  });
+
+  document.getElementById('data-info').style.display = 'block';
+}
+
+// ── Training control ──────────────────────────────────────────────────────────
+let sse = null;
+
+function startTraining() {
+  if (activeDataSrc === 'custom' && !uploadedData) {
+    log('Please upload and analyze a CSV dataset first.', 'warn');
+    document.getElementById('upload-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  const model   = activeDataSrc === 'custom' ? 'mlp'
+                  : document.querySelector('input[name=model]:checked').value;
+  const opt     = document.querySelector('input[name=optimizer]:checked').value;
+  const lr      = Math.pow(10, document.getElementById('lr-slider').value);
+  const epochs  = parseInt(document.getElementById('sel-epochs').value);
+  const batchSz = parseInt(document.getElementById('sel-batch').value);
+
+  // Reset UI
+  lossChart.data.labels = []; lossChart.data.datasets[0].data = []; lossChart.update();
+  accChart.data.labels  = []; accChart.data.datasets[0].data = []; accChart.data.datasets[1].data = []; accChart.update();
+  document.getElementById('pred-section').style.display = 'none';
+  document.getElementById('pred-grid').innerHTML = '';
+  document.getElementById('custom-predict-card').style.display = 'none';
+  ['s-loss','s-tacc','s-vacc','s-epoch'].forEach(id => document.getElementById(id).textContent = '—');
+  document.getElementById('log').innerHTML = '';
+  setProgress(0, 'Starting…');
+
+  document.getElementById('btn-train').disabled = true;
+  document.getElementById('btn-stop').disabled  = false;
+  document.getElementById('prog-bar').classList.add('pulsing');
+  document.getElementById('prog-bar').className = 'progress-bar bg-primary pulsing';
+
+  log(`Starting ${model.toUpperCase()} | ${opt.toUpperCase()} | lr=${lr.toFixed(4)} | ${epochs} epochs | data=${activeDataSrc}`);
+
+  fetch('/train', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, optimizer: opt, lr, epochs, batch_size: batchSz, data_source: activeDataSrc })
+  }).then(r => r.json()).then(d => {
+    if (d.error) { log(d.error, 'err'); resetButtons(); return; }
+    listenSSE();
+  });
+}
+
+function listenSSE() {
+  if (sse) sse.close();
+  sse = new EventSource('/stream');
+  sse.onmessage = e => handleMsg(JSON.parse(e.data));
+  sse.onerror   = () => { log('Connection lost.', 'err'); resetButtons(); };
+}
+
+function stopTraining() {
+  fetch('/stop', { method: 'POST' });
+  log('Stop requested…', 'warn');
+}
+
+function handleMsg(d) {
+  if (d.type === 'ping') return;
+
+  if (d.type === 'status') {
+    log(d.message);
+  }
+
+  if (d.type === 'config') {
+    renderArch(d.data_source === 'custom' ? 'custom'
+               : document.querySelector('input[name=model]:checked').value);
+    log(`Model ready — ${d.n_batches} batches/epoch`);
+  }
+
+  if (d.type === 'batch') {
+    document.getElementById('s-loss').textContent  = d.loss.toFixed(4);
+    document.getElementById('s-epoch').textContent = `${d.epoch}/${document.getElementById('sel-epochs').value}`;
+    document.getElementById('s-tacc').textContent  = (d.acc * 100).toFixed(1) + '%';
+    setProgress(d.progress, `Epoch ${d.epoch} · Batch ${d.batch}/${d.n_batches}`);
+
+    lossChart.data.labels              = d.loss_history.map((_,i) => i);
+    lossChart.data.datasets[0].data    = d.loss_history;
+    lossChart.update('none');
+  }
+
+  if (d.type === 'epoch') {
+    log(`Epoch ${d.epoch} — loss ${d.avg_loss} | train ${(d.train_acc*100).toFixed(1)}% | test ${(d.test_acc*100).toFixed(1)}%`, 'success');
+    document.getElementById('s-vacc').textContent = (d.test_acc * 100).toFixed(1) + '%';
+
+    accChart.data.labels              = d.all_epochs.map(e => `Ep ${e.epoch}`);
+    accChart.data.datasets[0].data    = d.all_epochs.map(e => e.train_acc);
+    accChart.data.datasets[1].data    = d.all_epochs.map(e => e.test_acc);
+    accChart.update();
+  }
+
+  if (d.type === 'done') {
+    setProgress(1, 'Training complete!');
+    document.getElementById('prog-bar').classList.remove('pulsing');
+    document.getElementById('prog-bar').classList.replace('bg-primary','bg-success');
+    log(`Done! Final test accuracy: ${(d.final_test_acc * 100).toFixed(2)}%`, 'success');
+
+    if (d.data_source === 'custom') {
+      showCustomPredictions(d);
+      buildPredictForm(d.feature_names, d.class_names);
+    } else {
+      renderPredictions(d);
+    }
+    resetButtons();
+    if (sse) { sse.close(); sse = null; }
+  }
+
+  if (d.type === 'stopped') {
+    setProgress(0, 'Stopped.');
+    log(d.message, 'warn');
+    document.getElementById('prog-bar').classList.remove('pulsing');
+    resetButtons();
+    if (sse) { sse.close(); sse = null; }
+  }
+
+  if (d.type === 'error') {
+    log('ERROR: ' + d.message, 'err');
+    console.error(d.traceback);
+    document.getElementById('prog-bar').classList.remove('pulsing');
+    resetButtons();
+    if (sse) { sse.close(); sse = null; }
+  }
+}
+
+function setProgress(frac, label) {
+  const pct = Math.round(frac * 100);
+  document.getElementById('prog-bar').style.width  = pct + '%';
+  document.getElementById('prog-pct').textContent   = pct + '%';
+  document.getElementById('prog-label').textContent = label;
+}
+
+function resetButtons() {
+  document.getElementById('btn-train').disabled = false;
+  document.getElementById('btn-stop').disabled  = true;
+}
+
+// ── MNIST predictions gallery ─────────────────────────────────────────────────
+function renderPredictions(d) {
+  const grid = document.getElementById('pred-grid');
+  grid.innerHTML = '';
+
+  d.images.forEach((pixels, i) => {
+    const pred  = d.predictions[i];
+    const label = d.labels[i];
+    const ok    = pred === label;
+
+    const item  = document.createElement('div'); item.className = 'pred-item';
+    const wrap  = document.createElement('div'); wrap.className = 'pred-wrap';
+
+    const canvas  = document.createElement('canvas');
+    canvas.width = 28; canvas.height = 28; canvas.className = 'pred-canvas';
+    const ctx = canvas.getContext('2d');
+    const img = ctx.createImageData(28, 28);
+    pixels.forEach((v, j) => {
+      img.data[j*4] = img.data[j*4+1] = img.data[j*4+2] = v;
+      img.data[j*4+3] = 255;
+    });
+    ctx.putImageData(img, 0, 0);
+
+    const badge = document.createElement('div');
+    badge.className = 'pred-badge ' + (ok ? 'pred-ok' : 'pred-bad');
+    badge.textContent = pred;
+
+    const lbl = document.createElement('div'); lbl.className = 'pred-lbl';
+    lbl.innerHTML = ok
+      ? `<span style="color:var(--emerald)">✓ ${pred}</span>`
+      : `<span style="color:var(--rose)">✗ ${pred}</span><br><small class="text-muted">true: ${label}</small>`;
+
+    wrap.appendChild(canvas); wrap.appendChild(badge);
+    item.appendChild(wrap); item.appendChild(lbl);
+    grid.appendChild(item);
+  });
+
+  document.getElementById('final-acc-badge').textContent =
+    'Test Accuracy: ' + (d.final_test_acc * 100).toFixed(2) + '%';
+  document.getElementById('pred-section').style.display = 'block';
+}
+
+// ── Custom data predictions table ─────────────────────────────────────────────
+function showCustomPredictions(d) {
+  const grid = document.getElementById('pred-grid');
+  grid.innerHTML = '';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'w-100 table-responsive';
+
+  const table = document.createElement('table');
+  table.className = 'table table-sm table-hover preview-table mb-0';
+
+  // Header
+  const thead = table.createTHead();
+  const hr    = thead.insertRow();
+  d.feature_names.forEach(fn => {
+    const th = document.createElement('th'); th.textContent = fn; hr.appendChild(th);
+  });
+  ['Predicted', 'True Label'].forEach(txt => {
+    const th = document.createElement('th'); th.textContent = txt; hr.appendChild(th);
+  });
+
+  // Rows
+  const tbody = table.createTBody();
+  d.raw_x.forEach((row, i) => {
+    const tr   = tbody.insertRow();
+    row.forEach(v => { const td = tr.insertCell(); td.textContent = v.toFixed(2); });
+    const pred      = d.predictions[i];
+    const trueLabel = d.labels[i];
+    const ok        = pred === trueLabel;
+    const tdPred    = tr.insertCell();
+    const tdTrue    = tr.insertCell();
+    tdPred.innerHTML = `<span class="badge ${ok ? 'bg-success' : 'bg-danger'}">${d.class_names[pred]}</span>`;
+    tdTrue.textContent = d.class_names[trueLabel];
+    tdTrue.style.color = '#64748b';
+  });
+
+  wrap.appendChild(table);
+  grid.appendChild(wrap);
+
+  document.getElementById('final-acc-badge').textContent =
+    'Test Accuracy: ' + (d.final_test_acc * 100).toFixed(2) + '%';
+  document.getElementById('pred-section').style.display = 'block';
+}
+
+// ── "Try it yourself" form ────────────────────────────────────────────────────
+function buildPredictForm(featureNames, classNames) {
+  const card   = document.getElementById('custom-predict-card');
+  const fields = document.getElementById('predict-form-fields');
+  fields.innerHTML = '';
+
+  featureNames.forEach((fn, i) => {
+    const col = document.createElement('div');
+    col.className = 'col-sm-6 col-md-4 col-lg-3';
+    col.innerHTML = `
+      <label class="form-label small mb-1">${fn}</label>
+      <input type="number" class="form-control form-control-sm"
+             step="0.01" placeholder="0.00" id="feat-${i}">`;
+    fields.appendChild(col);
+  });
+
+  card.dataset.classNames   = JSON.stringify(classNames);
+  card.dataset.featureCount = featureNames.length;
+  card.style.display        = 'block';
+
+  document.getElementById('predict-result').innerHTML = '';
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function runCustomPredict() {
+  const card = document.getElementById('custom-predict-card');
+  const n    = parseInt(card.dataset.featureCount);
+  const features = [];
+  for (let i = 0; i < n; i++) {
+    features.push(parseFloat(document.getElementById(`feat-${i}`).value) || 0);
+  }
+
+  fetch('/predict_custom', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ features })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.error) {
+      document.getElementById('predict-result').innerHTML =
+        `<div class="alert alert-danger py-1 small mb-0">${d.error}</div>`;
+      return;
+    }
+    showPredictResult(d);
+  });
+}
+
+function showPredictResult(d) {
+  const maxProb = Math.max(...d.probabilities);
+  let html = `
+    <div class="d-flex align-items-center gap-3 mb-3">
+      <span class="badge bg-primary" style="font-size:14px;padding:8px 14px">${d.class_name}</span>
+      <div>
+        <div class="small fw-semibold">Predicted class</div>
+        <div class="small text-muted">Confidence: ${(maxProb * 100).toFixed(1)}%</div>
+      </div>
+    </div>`;
+
+  d.class_names.forEach((name, i) => {
+    const pct   = (d.probabilities[i] * 100);
+    const isPred = i === d.prediction;
+    const color  = isPred ? 'var(--indigo)' : '#94a3b8';
+    html += `
+      <div class="prob-row">
+        <div class="prob-label">${name}</div>
+        <div class="prob-bar-wrap">
+          <div class="prob-bar-fill" style="width:${pct.toFixed(1)}%;background:${color}">
+            ${pct >= 8 ? pct.toFixed(1) + '%' : ''}
+          </div>
+        </div>
+        <div style="font-size:11px;color:#64748b;width:36px">${pct.toFixed(1)}%</div>
+      </div>`;
+  });
+
+  document.getElementById('predict-result').innerHTML = html;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+renderArch('mlp');
+
+document.querySelectorAll('input[name=model]').forEach(r =>
+  r.addEventListener('change', e => {
+    if (activeDataSrc === 'mnist') renderArch(e.target.value);
+  })
+);
+
+document.querySelectorAll('input[name=datasrc]').forEach(r =>
+  r.addEventListener('change', e => switchDataSource(e.target.value))
+);
+</script>
+</body>
+</html>
